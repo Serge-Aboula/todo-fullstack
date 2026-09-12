@@ -1,11 +1,29 @@
 const form = document.getElementById('todo-form');
 const input = document.getElementById('todo-input');
 const list = document.getElementById('todo-list');
+const errorBox = document.getElementById('error-message');
+
+function showError(message) {
+  errorBox.textContent = message;
+  errorBox.style.display = 'block';
+}
+
+function clearError() {
+  errorBox.style.display = 'none';
+}
 
 async function fetchTodos() {
-  const res = await fetch('/api/todos');
-  const todos = await res.json();
-  renderTodos(todos);
+  try {
+    clearError();
+    const res = await fetch('/api/todos');
+    if (!res.ok) {
+      throw new Error('Impossible de récupérer les tâches');
+    }
+    const todos = await res.json();
+    renderTodos(todos);
+  } catch (err) {
+    showError('Erreur de connexion au serveur. Réessaie dans quelques instants.');
+  }
 }
 
 function renderTodos(todos) {
@@ -35,43 +53,57 @@ function renderTodos(todos) {
   });
 }
 
-async function toggleDone(id, done) {
-  await fetch(`/api/todos/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ done })
-  });
-  fetchTodos();
-}
-
-async function deleteTodo(id) {
-  await fetch(`/api/todos/${id}`, {
-    method: 'DELETE'
-  });
-  fetchTodos();
-}
-
-fetchTodos(); // appel initial au chargement de la page
-
 form.addEventListener('submit', async (event) => {
-  event.preventDefault(); // empêche le rechargement de page par défaut du formulaire
+  event.preventDefault();
+  clearError();
 
   const text = input.value.trim();
   if (!text) return;
 
-  const res = await fetch('/api/todos', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ text })
-  });
+  try {
+    const res = await fetch('/api/todos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
 
-  if (res.ok) {
-    input.value = ''; // vide le champ
-    fetchTodos(); // recharge la liste depuis le serveur
-  } else {
-    const error = await res.json();
-    alert(error.error);
+    if (res.ok) {
+      input.value = '';
+      fetchTodos();
+    } else {
+      const error = await res.json();
+      showError(error.error);
+    }
+  } catch (err) {
+    showError('Erreur de connexion au serveur. Ta tâche n\'a pas été ajoutée.');
   }
 });
+
+async function toggleDone(id, done) {
+  try {
+    clearError();
+    const res = await fetch(`/api/todos/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ done })
+    });
+    if (!res.ok) throw new Error();
+    fetchTodos();
+  } catch (err) {
+    showError('Impossible de mettre à jour cette tâche.');
+    fetchTodos(); // resynchronise l'affichage avec le serveur en cas d'échec
+  }
+}
+
+async function deleteTodo(id) {
+  try {
+    clearError();
+    const res = await fetch(`/api/todos/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error();
+    fetchTodos();
+  } catch (err) {
+    showError('Impossible de supprimer cette tâche.');
+  }
+}
+
+fetchTodos();
