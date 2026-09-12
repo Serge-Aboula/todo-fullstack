@@ -1,9 +1,10 @@
+require('dotenv').config();
 const express = require("express");
 const path = require("path");
 const todosStore= require("./todos");
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // middleware : parse le JSON envoyé dans req.body
 app.use(express.json());
@@ -17,9 +18,12 @@ app.get('/api/todos', (_req, res) => {
 
 // POST /api/todos -> crée une tâche
 app.post('/api/todos', (req, res) => {
-  const { text } = req.body;
+  const text = (req.body.text || '').trim();
   if (!text) {
-    return res.status(400).json({ error: 'Le champ "text" est requis' });
+    return res.status(400).json({ error: 'Le champ "text" est requis et ne peut pas être vide' });
+  }
+  if (text.length > 200) {
+    return res.status(400).json({ error: 'Le texte ne peut pas dépasser 200 caractères' });
   }
   const todo = todosStore.create(text);
   res.status(201).json(todo);
