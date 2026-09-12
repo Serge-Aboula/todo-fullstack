@@ -19,3 +19,8 @@ test('POST /api/todos avec "text" crée une tâche (201)', async () => {
   assert.strictEqual(res.status, 201);
   assert.strictEqual(res.body.text, 'Tâche de test');
 });
+
+test('POST /api/todos avec un texte composé uniquement d\'espaces renvoie 400', async () => {
+  const res = await request(app).post('/api/todos').send({ text: '   ' });
+  assert.strictEqual(res.status, 400);
+});
